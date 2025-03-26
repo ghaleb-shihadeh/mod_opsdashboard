@@ -211,3 +211,39 @@ function exportPDF() {
 window.onload = function() {
     loadSavedData();
 };
+
+
+function createDayCheckboxes() {
+    const container = document.getElementById('dayFilter');
+    container.innerHTML = ''; // leeren
+
+    days.forEach((day, index) => {
+        const label = document.createElement('label');
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.checked = true;
+        checkbox.dataset.dayIndex = index;
+
+        checkbox.addEventListener('change', () => {
+            toggleDayColumn(index, checkbox.checked);
+        });
+
+        label.appendChild(checkbox);
+        label.appendChild(document.createTextNode(day));
+        container.appendChild(label);
+    });
+}
+
+function toggleDayColumn(dayIndex, visible) {
+    const table = document.querySelector('#resultContainer table');
+    if (!table) return;
+
+    const rows = table.querySelectorAll('tr');
+    rows.forEach(row => {
+        const cells = row.querySelectorAll('td, th');
+        if (cells.length > dayIndex + 1) { // +1 wegen Uhrzeitspalte
+            cells[dayIndex + 1].style.display = visible ? '' : 'none';
+        }
+    });
+}
+
