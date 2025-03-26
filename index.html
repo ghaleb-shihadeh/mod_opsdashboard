@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ops Dashboard</title>
+    <link rel="icon" href="images\MoD_Beta_Logo.png" type="image/png">
+    
+    <!-- CSS-Datei einbinden -->
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <img src="images\MoD_Beta_Logo.png" alt="MoD Logo" class="sidebar-logo">
+        <p class="slogan">MoD Ops Dashboard</p> <!-- Slogan hinzugefügt -->
+
+        <ul class="navbar">
+
+            <li><a href="index.html" class="active">Dienstplan-Analyse</a></li>
+            <li><a href="weekly.html">Wöchentliches Diagramm</a></li>
+            <li><a href="uebersicht.html">Schichtstarts & -enden Übersicht</a></li>
+            <li><a href="einstellungen.html">Einstellungen</a></li>
+
+            
+        </ul>
+
+        <footer class="sidebar-footer">
+            <p>POC <a href="mailto:ghaleb.shihadeh@mod.group">ghaleb.shihadeh@mod.group</a></p>
+        </footer>
+
+    </div>
+
+    <!-- Hauptinhalt -->
+    <div class="main-content">
+        <header>
+            <div class="header-content">
+                <h1>Dienstplan-Analyse</h1>
+            </div>
+        </header>
+
+        <div class="container">
+            <!-- Drag-and-Drop-Bereich -->
+            <div id="dropZone" class="drop-zone">
+                Datei ziehen oder hochladen
+            </div>
+
+            <!-- Verstecktes Datei-Upload-Feld -->
+            <input type="file" id="fileInput" accept=".xlsx">
+
+            <h2>Schichtübersicht</h2>
+            <div id="resultContainer">
+                <!-- Hier werden die Schichtdaten angezeigt -->
+            </div>
+
+            <!-- Button zum PDF-Export -->
+            <button class="btn" id="exportPdf" style="display: none;" onclick="exportPDF()">PDF exportieren</button>
+        </div>
+
+    </div>
+
+    <!-- JS-Dateien einbinden -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.16.9/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.13/jspdf.plugin.autotable.min.js"></script>
+    <script src="js/script.js"></script>
+
+</body>
+</html>

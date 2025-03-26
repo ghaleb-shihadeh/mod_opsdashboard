@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ops Dashboard</title>
+    <link rel="icon" href="images\MoD_Beta_Logo.png" type="image/png">
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+
+<body>
+
+<!-- Sidebar -->
+<div class="sidebar">
+    <img src="images\MoD_Beta_Logo.png" alt="MoD Logo" class="sidebar-logo">
+    <p class="slogan">MoD Ops Dashboard</p>
+    <ul class="navbar">
+        <li><a href="index.html">Dienstplan-Analyse</a></li>
+        <li><a href="weekly.html">Wöchentliches Diagramm</a></li>
+        <li><a href="uebersicht.html" class="active">Schichtstarts & -enden Übersicht</a></li>
+        <li><a href="einstellungen.html">Einstellungen</a></li>
+
+    </ul>
+
+    <footer class="sidebar-footer">
+        <p>POC <a href="mailto:ghaleb.shihadeh@mod.group">ghaleb.shihadeh@mod.group</a></p>
+    </footer>
+
+    
+</div>
+
+<!-- Hauptinhalt -->
+<div class="main-content">
+    <header>
+        <h1>Schichtstarts & -enden Übersicht</h1>
+    </header>
+
+    <div class="container">
+        <!-- Tages-Navigation -->
+        <div id="dayNavigation" class="day-navigation"></div>
+
+        <!-- Tabelle für die Schichtstarts und -enden -->
+        <div id="overviewTable">
+            <!-- Die kombinierte Tabelle wird hier dynamisch eingefügt -->
+        </div>
+    </div>
+</div>
+
+<script src="js/uebersicht.js"></script>
+
+</body>
+</html>

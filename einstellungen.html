@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Schichten-Einstellungen</title>
+    <link rel="icon" href="images\MoD_Beta_Logo.png" type="image/png">
+
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+
+
+<body>
+
+<!-- Sidebar -->
+<div class="sidebar">
+    <img src="images\MoD_Beta_Logo.png" alt="MoD Logo" class="sidebar-logo">
+    <p class="slogan">MoD Ops Dashboard</p>
+    <ul class="navbar">
+        <li><a href="index.html">Dienstplan-Analyse</a></li>
+        <li><a href="weekly.html">Wöchentliches Diagramm</a></li>
+        <li><a href="uebersicht.html">Schichtstarts & -enden Übersicht</a></li>
+        <li><a href="einstellungen.html" class="active">Einstellungen</a></li>
+
+    </ul>
+
+    <footer class="sidebar-footer">
+        <p>POC <a href="mailto:ghaleb.shihadeh@mod.group">ghaleb.shihadeh@mod.group</a></p>
+    </footer>
+
+</div>
+
+
+<div class="main-content">
+    <header>
+        <h1>Schichten-Einstellungen</h1>
+        <div class="notice-box">
+            <p><strong>Hinweis:</strong>Bei Änderungen an den relevanten Schichten muss die Excel-Datei von E2N neu hochgeladen werden, damit die Anpassungen wirksam werden.</p>
+        </div>
+    </header>
+
+    <div class="container-liste">
+        <form id="schichtForm">
+            <label for="schichtenInput">Relevante Schichten hinzufügen (durch Komma getrennt):</label>
+            <input type="text" id="schichtenInput" placeholder="z.B. Sonderdienst, Kerndienst, Tagschicht" />
+            <button type="submit">Speichern</button>
+        </form>
+
+        <h3>Aktuelle Relevante Schichten:</h3>
+        <ul id="schichtenList">
+            <!-- Liste der relevanten Schichten wird hier dynamisch angezeigt -->
+        </ul>
+    </div>
+</div>
+
+<script src="js/einstellungen.js"></script>
+
+</body>
+</html>
