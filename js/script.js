@@ -99,9 +99,11 @@ function processExcel(file) {
 // Prüft, ob eine Zeile wahrscheinlich Datumseinträge enthält
 function isDateRow(row) {
     return row.every(cell =>
-        typeof cell === 'string' && cell.match(/^[A-ZÄÖÜa-zäöü]{2,3} \d{2}\.\d{2}$/)
+        typeof cell === 'string' &&
+        cell.match(/^[A-ZÄÖÜa-zäöü]{2,3}\.? \d{2}\.\d{2}\.$/)
     );
 }
+
 
 // Arbeitsstunden analysieren und zählen
 function analyzeDay(rows, dayIndex) {
