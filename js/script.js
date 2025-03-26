@@ -1,81 +1,53 @@
-// Lade die relevanten Schichten aus LocalStorage oder setze eine leere Liste als Standardwert
 let relevantShifts = loadFromLocalStorage('relevantShifts') || [];
+let days = [];
+let hourlyData = [];
 
-// Funktion zum Speichern der relevanten Schichten in LocalStorage
-function saveRelevantShifts(shifts) {
-    saveToLocalStorage('relevantShifts', shifts);
-}
-
-let days = [];  // Hier werden die tatsächlichen Tage (Datum) aus der Excel-Datei gespeichert
-let hourlyData = [];  // Hier werden die stündlichen Mitarbeiterdaten gespeichert
-
-// Drag-and-Drop-Events für die Datei
 const dropZone = document.getElementById('dropZone');
 const fileInput = document.getElementById('fileInput');
 
-dropZone.addEventListener('dragover', (event) => {
-    event.preventDefault();
+dropZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
     dropZone.classList.add('dragover');
 });
-
-dropZone.addEventListener('dragleave', () => {
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
     dropZone.classList.remove('dragover');
-});
-
-dropZone.addEventListener('drop', (event) => {
-    event.preventDefault();
-    dropZone.classList.remove('dragover');
-    const files = event.dataTransfer.files;
-    if (files.length > 0) {
-        processExcel(files[0]); // Verarbeite die Datei
+    if (e.dataTransfer.files.length > 0) {
+        processExcel(e.dataTransfer.files[0]);
     }
 });
-
-dropZone.addEventListener('click', () => {
-    fileInput.click();  // Öffne den Dateiauswahl-Dialog
+dropZone.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', (e) => {
+    if (e.target.files[0]) processExcel(e.target.files[0]);
 });
 
-fileInput.addEventListener('change', (event) => {
-    const file = event.target.files[0];
-    if (file) {
-        processExcel(file);  // Verarbeite die ausgewählte Datei
-    }
-});
-
-// Speichere die Daten in LocalStorage
 function saveToLocalStorage(key, value) {
     localStorage.setItem(key, JSON.stringify(value));
 }
-
-// Funktion zum Laden von Daten aus dem LocalStorage
 function loadFromLocalStorage(key) {
     let value = localStorage.getItem(key);
     return value ? JSON.parse(value) : null;
 }
 
-// Excel-Datei verarbeiten und die Schichtdaten analysieren
-// Excel-Datei verarbeiten und die Schichtdaten analysieren
 function processExcel(file) {
     let reader = new FileReader();
     reader.onload = function (e) {
         let data = new Uint8Array(e.target.result);
         let workbook = XLSX.read(data, { type: 'array' });
+        let sheet = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1 });
 
-        let sheetName = workbook.SheetNames[0];
-        let worksheet = workbook.Sheets[sheetName];
-        let jsonSheet = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-
-        // Suche die Zeile mit Datumseinträgen (z. B. "Mo 24.03." oder "Mo. 24.03.")
-        for (let i = 0; i < jsonSheet.length; i++) {
-            const potentialDays = jsonSheet[i].slice(1, 8); // Spalten B bis H
-            if (isDateRow(potentialDays)) {
-                days = potentialDays.map(cell => cell.trim()); // Bereinigen
+        // Datum erkennen
+        for (let i = 0; i < sheet.length; i++) {
+            const possibleDays = sheet[i].slice(1, 8);
+            if (isDateRow(possibleDays)) {
+                days = possibleDays.map(cell => cell.trim());
                 break;
             }
         }
 
         if (days.length !== 7) {
-            alert("Die Datum-Zeile konnte nicht korrekt erkannt werden.");
+            alert("Datumszeile konnte nicht erkannt werden.");
             return;
         }
 
@@ -83,68 +55,52 @@ function processExcel(file) {
         resultContainer.innerHTML = '';
 
         hourlyData = [];
-        for (let dayIndex = 1; dayIndex <= 7; dayIndex++) {
-            hourlyData.push(analyzeDay(jsonSheet, dayIndex));
+        for (let i = 1; i <= 7; i++) {
+            hourlyData.push(analyzeDay(sheet, i));
         }
 
         saveToLocalStorage('workScheduleData', hourlyData);
         saveToLocalStorage('workScheduleDays', days);
-        saveToLocalStorage('rawExcelData', jsonSheet);
+        saveToLocalStorage('rawExcelData', sheet);
 
         displayResultsVertically(hourlyData, resultContainer);
         document.getElementById('exportPdf').style.display = 'block';
     };
-
     reader.readAsArrayBuffer(file);
 }
 
-
-// Prüft, ob eine Zeile wahrscheinlich Datumseinträge enthält
 function isDateRow(row) {
     return row.every(cell =>
         typeof cell === 'string' &&
-        cell.match(/^[A-ZÄÖÜa-zäöü]{2,3}\.? \d{2}\.\d{2}\.$/)
+        cell.trim().match(/^[A-ZÄÖÜa-zäöü]{2,3}\.? \d{2}\.\d{2}\.$/)
     );
 }
 
-
-// Arbeitsstunden analysieren und zählen
 function analyzeDay(rows, dayIndex) {
-    let hours = new Array(24).fill(0); // Array für 24 Stunden (0 bis 23)
+    let hours = new Array(24).fill(0);
     for (let i = 1; i < rows.length; i++) {
         let cols = rows[i];
-        if (!cols || !cols[dayIndex]) continue; // Überspringe leere Zeilen
+        if (!cols || !cols[dayIndex]) continue;
 
         let shiftType = cols[dayIndex];
-        if (relevantShifts.includes(shiftType)) { // Überprüfen, ob die Schicht relevant ist
-            let shiftTime = rows[i - 1][dayIndex] ? rows[i - 1][dayIndex].trim() : ''; // Hol die Schichtzeit
+        if (relevantShifts.includes(shiftType)) {
+            let shiftTime = rows[i - 1][dayIndex]?.trim() || '';
             if (shiftTime.includes('-')) {
-                let times = shiftTime.split('-');
-                let startHour = parseInt(times[0].trim().split(':')[0]);
-                let endHour = parseInt(times[1].trim().split(':')[0]);
-                if (endHour === 0) endHour = 24;  // Behandle 00:00 als Mitternacht
-
-                // Zähle die Stunden, in denen Mitarbeiter arbeiten
-                for (let hour = startHour; hour < endHour; hour++) {
-                    hours[hour]++;
-                }
+                let [start, end] = shiftTime.split('-').map(t => parseInt(t.trim().split(':')[0]));
+                if (end === 0) end = 24;
+                for (let h = start; h < end; h++) hours[h]++;
             }
         }
     }
     return hours;
 }
 
-// Ergebnisse in der Tabelle anzeigen
 function displayResultsVertically(hourlyData, resultContainer) {
-    let resultHTML = `<table><thead><tr><th>Uhrzeit</th>`;
-    
-    // Füge die tatsächlichen Tage als Spaltenüberschriften hinzu
-    days.forEach(day => {
-        resultHTML += `<th>${day}</th>`;
-    });
+    let resultHTML = `<div id="dayFilter" class="day-filter"></div>`;
+    resultHTML += `<table><thead><tr><th>Uhrzeit</th>`;
+    days.forEach(day => resultHTML += `<th>${day}</th>`);
     resultHTML += `</tr></thead><tbody>`;
 
-    // Füge die Stunden (0 bis 23) als Zeilen hinzu
     for (let hour = 0; hour < 24; hour++) {
         resultHTML += `<tr><td>${hour}:00 - ${hour + 1}:00</td>`;
         hourlyData.forEach(dayHours => {
@@ -155,46 +111,37 @@ function displayResultsVertically(hourlyData, resultContainer) {
 
     resultHTML += `</tbody></table>`;
     resultContainer.innerHTML = resultHTML;
+    createDayCheckboxes(); // ✅ Checkboxen aktualisieren
 }
 
-// Funktion zum Laden der Daten und Anzeige nach dem Seitenladen
 function loadSavedData() {
     let savedDays = loadFromLocalStorage('workScheduleDays');
     let savedHourlyData = loadFromLocalStorage('workScheduleData');
-
     if (savedDays && savedHourlyData) {
         days = savedDays;
         hourlyData = savedHourlyData;
         let resultContainer = document.getElementById('resultContainer');
         displayResultsVertically(hourlyData, resultContainer);
         document.getElementById('exportPdf').style.display = 'block';
-    } else {
-        console.log('Keine gespeicherten Daten gefunden.');
     }
 }
 
-// PDF-Export-Funktion
 function exportPDF() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
-    let x = 10, y = 10;
+    let y = 10;
 
-    // Titel des PDFs
     doc.setFontSize(16);
-    doc.text("MoD Schichtzeiten-Analyse", x, y);
+    doc.text("MoD Schichtzeiten-Analyse", 10, y);
     y += 10;
 
-    // Daten für die Tabelle erstellen
+    let headers = [["Uhrzeit"].concat(days)];
     let tableData = [];
     for (let hour = 0; hour < 24; hour++) {
         let row = [`${hour}:00 - ${hour + 1}:00`];
-        hourlyData.forEach(dayHours => {
-            row.push(dayHours[hour]);
-        });
+        hourlyData.forEach(dayHours => row.push(dayHours[hour]));
         tableData.push(row);
     }
-
-    let headers = [["Uhrzeit"].concat(days)];
 
     doc.autoTable({
         head: headers,
@@ -207,29 +154,21 @@ function exportPDF() {
     doc.save("schichtübersicht.pdf");
 }
 
-// Lade gespeicherte Daten beim Start
-window.onload = function() {
-    loadSavedData();
-};
-
-
 function createDayCheckboxes() {
     const container = document.getElementById('dayFilter');
-    container.innerHTML = ''; // leeren
-
+    container.innerHTML = '';
     days.forEach((day, index) => {
         const label = document.createElement('label');
+        label.style.marginRight = '10px';
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
         checkbox.checked = true;
         checkbox.dataset.dayIndex = index;
-
         checkbox.addEventListener('change', () => {
             toggleDayColumn(index, checkbox.checked);
         });
-
         label.appendChild(checkbox);
-        label.appendChild(document.createTextNode(day));
+        label.appendChild(document.createTextNode(" " + day));
         container.appendChild(label);
     });
 }
@@ -241,9 +180,10 @@ function toggleDayColumn(dayIndex, visible) {
     const rows = table.querySelectorAll('tr');
     rows.forEach(row => {
         const cells = row.querySelectorAll('td, th');
-        if (cells.length > dayIndex + 1) { // +1 wegen Uhrzeitspalte
+        if (cells.length > dayIndex + 1) {
             cells[dayIndex + 1].style.display = visible ? '' : 'none';
         }
     });
 }
 
+window.onload = loadSavedData;
