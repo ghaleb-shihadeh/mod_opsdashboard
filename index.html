@@ -4,32 +4,50 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ops Dashboard</title>
-    <link rel="icon" href="images\MoD_Beta_Logo.png" type="image/png">
+    <link rel="icon" href="images/MoD_Beta_Logo.png" type="image/png">
     
     <!-- CSS-Datei einbinden -->
     <link rel="stylesheet" href="css/styles.css">
+    <style>
+        #dayFilter {
+            margin: 1rem 0;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        #dayFilter label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: #f1f1f1;
+            padding: 6px 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+        #dayFilter input[type="checkbox"] {
+            transform: scale(1.1);
+        }
+    </style>
 </head>
 <body>
 
     <!-- Sidebar -->
     <div class="sidebar">
-        <img src="images\MoD_Beta_Logo.png" alt="MoD Logo" class="sidebar-logo">
-        <p class="slogan">MoD Ops Dashboard</p> <!-- Slogan hinzugefügt -->
+        <img src="images/MoD_Beta_Logo.png" alt="MoD Logo" class="sidebar-logo">
+        <p class="slogan">MoD Ops Dashboard</p>
 
         <ul class="navbar">
-
             <li><a href="index.html" class="active">Dienstplan-Analyse</a></li>
             <li><a href="weekly.html">Wöchentliches Diagramm</a></li>
             <li><a href="uebersicht.html">Schichtstarts & -enden Übersicht</a></li>
             <li><a href="einstellungen.html">Einstellungen</a></li>
-
-            
         </ul>
 
         <footer class="sidebar-footer">
             <p>POC <a href="mailto:ghaleb.shihadeh@mod.group">ghaleb.shihadeh@mod.group</a></p>
         </footer>
-
     </div>
 
     <!-- Hauptinhalt -->
@@ -50,17 +68,16 @@
             <input type="file" id="fileInput" accept=".xlsx">
 
             <h2>Schichtübersicht</h2>
-            <div id="dayFilter" class="day-filter" style="margin-bottom: 1rem;"></div>
 
-resultContainer.innerHTML = resultHTML;
-createDayCheckboxes(); // Checkboxen generieren
-                <!-- Hier werden die Schichtdaten angezeigt -->
-            </div>
+            <!-- ✅ NEU: Checkboxen zum Ein-/Ausblenden von Tagen -->
+            <div id="dayFilter" class="day-filter"></div>
+
+            <!-- Tabelle -->
+            <div id="resultContainer"></div>
 
             <!-- Button zum PDF-Export -->
             <button class="btn" id="exportPdf" style="display: none;" onclick="exportPDF()">PDF exportieren</button>
         </div>
-
     </div>
 
     <!-- JS-Dateien einbinden -->
