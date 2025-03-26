@@ -54,6 +54,7 @@ function loadFromLocalStorage(key) {
 }
 
 // Excel-Datei verarbeiten und die Schichtdaten analysieren
+// Excel-Datei verarbeiten und die Schichtdaten analysieren
 function processExcel(file) {
     let reader = new FileReader();
     reader.onload = function (e) {
@@ -62,39 +63,41 @@ function processExcel(file) {
 
         let sheetName = workbook.SheetNames[0];
         let worksheet = workbook.Sheets[sheetName];
-
         let jsonSheet = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
 
-        // Finde die Zeile, die die Datumseinträge enthält
+        // Suche die Zeile mit Datumseinträgen (z. B. "Mo 24.03." oder "Mo. 24.03.")
         for (let i = 0; i < jsonSheet.length; i++) {
-            const potentialDays = jsonSheet[i].slice(1, 8); // Prüfe die Spalten B bis H
+            const potentialDays = jsonSheet[i].slice(1, 8); // Spalten B bis H
             if (isDateRow(potentialDays)) {
-                days = potentialDays;
-                break; // Beende die Schleife, wenn die Zeile mit Datum gefunden wurde
+                days = potentialDays.map(cell => cell.trim()); // Bereinigen
+                break;
             }
         }
 
+        if (days.length !== 7) {
+            alert("Die Datum-Zeile konnte nicht korrekt erkannt werden.");
+            return;
+        }
+
         let resultContainer = document.getElementById('resultContainer');
-        resultContainer.innerHTML = ''; 
+        resultContainer.innerHTML = '';
 
         hourlyData = [];
         for (let dayIndex = 1; dayIndex <= 7; dayIndex++) {
-            hourlyData.push(analyzeDay(jsonSheet, dayIndex)); // Berechne die Mitarbeiterstunden für jeden Tag
+            hourlyData.push(analyzeDay(jsonSheet, dayIndex));
         }
 
-        // Speichere die Schichtdaten in LocalStorage
         saveToLocalStorage('workScheduleData', hourlyData);
         saveToLocalStorage('workScheduleDays', days);
-
-        // Speichere auch die Rohdaten der Excel-Datei im LocalStorage
         saveToLocalStorage('rawExcelData', jsonSheet);
 
-        displayResultsVertically(hourlyData, resultContainer); // Zeige die Ergebnisse in einer Tabelle an
-        document.getElementById('exportPdf').style.display = 'block'; // Zeige den PDF-Export-Button an
+        displayResultsVertically(hourlyData, resultContainer);
+        document.getElementById('exportPdf').style.display = 'block';
     };
 
-    reader.readAsArrayBuffer(file); // Lese die Datei als ArrayBuffer
+    reader.readAsArrayBuffer(file);
 }
+
 
 // Prüft, ob eine Zeile wahrscheinlich Datumseinträge enthält
 function isDateRow(row) {
