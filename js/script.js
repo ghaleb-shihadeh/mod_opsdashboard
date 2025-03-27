@@ -1,26 +1,7 @@
 let relevantShifts = loadFromLocalStorage('relevantShifts') || [];
 let days = [];
 let hourlyData = [];
-
-const dropZone = document.getElementById('dropZone');
-const fileInput = document.getElementById('fileInput');
-
-dropZone.addEventListener('dragover', (e) => {
-    e.preventDefault();
-    dropZone.classList.add('dragover');
-});
-dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
-dropZone.addEventListener('drop', (e) => {
-    e.preventDefault();
-    dropZone.classList.remove('dragover');
-    if (e.dataTransfer.files.length > 0) {
-        processExcel(e.dataTransfer.files[0]);
-    }
-});
-dropZone.addEventListener('click', () => fileInput.click());
-fileInput.addEventListener('change', (e) => {
-    if (e.target.files[0]) processExcel(e.target.files[0]);
-});
+let rufData = [];
 
 function saveToLocalStorage(key, value) {
     localStorage.setItem(key, JSON.stringify(value));
@@ -30,43 +11,24 @@ function loadFromLocalStorage(key) {
     return value ? JSON.parse(value) : null;
 }
 
-function processExcel(file) {
-    let reader = new FileReader();
-    reader.onload = function (e) {
-        let data = new Uint8Array(e.target.result);
-        let workbook = XLSX.read(data, { type: 'array' });
-        let sheet = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1 });
+function initDropZone(dropZoneId, inputId, callback) {
+    const dropZone = document.getElementById(dropZoneId);
+    const input = document.getElementById(inputId);
 
-        // Datum erkennen
-        for (let i = 0; i < sheet.length; i++) {
-            const possibleDays = sheet[i].slice(1, 8);
-            if (isDateRow(possibleDays)) {
-                days = possibleDays.map(cell => cell.trim());
-                break;
-            }
-        }
-
-        if (days.length !== 7) {
-            alert("Datumszeile konnte nicht erkannt werden.");
-            return;
-        }
-
-        let resultContainer = document.getElementById('resultContainer');
-        resultContainer.innerHTML = '';
-
-        hourlyData = [];
-        for (let i = 1; i <= 7; i++) {
-            hourlyData.push(analyzeDay(sheet, i));
-        }
-
-        saveToLocalStorage('workScheduleData', hourlyData);
-        saveToLocalStorage('workScheduleDays', days);
-        saveToLocalStorage('rawExcelData', sheet);
-
-        displayResultsVertically(hourlyData, resultContainer);
-        document.getElementById('exportPdf').style.display = 'block';
-    };
-    reader.readAsArrayBuffer(file);
+    dropZone.addEventListener('click', () => input.click());
+    dropZone.addEventListener('dragover', e => {
+        e.preventDefault();
+        dropZone.classList.add('dragover');
+    });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+    dropZone.addEventListener('drop', e => {
+        e.preventDefault();
+        dropZone.classList.remove('dragover');
+        if (e.dataTransfer.files.length > 0) callback(e.dataTransfer.files[0]);
+    });
+    input.addEventListener('change', e => {
+        if (input.files.length > 0) callback(input.files[0]);
+    });
 }
 
 function isDateRow(row) {
@@ -76,17 +38,16 @@ function isDateRow(row) {
     );
 }
 
-function analyzeDay(rows, dayIndex) {
+function analyzeDay(rows, dayIndex, typeFilter) {
     let hours = new Array(24).fill(0);
     for (let i = 1; i < rows.length; i++) {
         let cols = rows[i];
         if (!cols || !cols[dayIndex]) continue;
-
         let shiftType = cols[dayIndex];
-        if (relevantShifts.includes(shiftType)) {
-            let shiftTime = rows[i - 1][dayIndex]?.trim() || '';
-            if (shiftTime.includes('-')) {
-                let [start, end] = shiftTime.split('-').map(t => parseInt(t.trim().split(':')[0]));
+        if (typeFilter(shiftType)) {
+            let time = rows[i - 1][dayIndex]?.trim() || '';
+            if (time.includes('-')) {
+                let [start, end] = time.split('-').map(t => parseInt(t.trim().split(':')[0]));
                 if (end === 0) end = 24;
                 for (let h = start; h < end; h++) hours[h]++;
             }
@@ -96,31 +57,104 @@ function analyzeDay(rows, dayIndex) {
 }
 
 function displayResultsVertically(hourlyData, resultContainer) {
-    let resultHTML = `<div id="dayFilter" class="day-filter"></div>`;
-    resultHTML += `<table><thead><tr><th>Uhrzeit</th>`;
-    days.forEach(day => resultHTML += `<th>${day}</th>`);
-    resultHTML += `</tr></thead><tbody>`;
+    let ruf = loadFromLocalStorage('rufData') || [];
+    let html = `<div id="dayFilter" class="day-filter"></div><table><thead><tr><th>Uhrzeit</th>`;
+    days.forEach(day => html += `<th>${day}</th>`);
+    html += `</tr></thead><tbody>`;
 
     for (let hour = 0; hour < 24; hour++) {
-        resultHTML += `<tr><td>${hour}:00 - ${hour + 1}:00</td>`;
-        hourlyData.forEach(dayHours => {
-            resultHTML += `<td>${dayHours[hour]}</td>`;
+        html += `<tr><td>${hour}:00 - ${hour + 1}:00</td>`;
+        hourlyData.forEach((dayHours, idx) => {
+            const regular = dayHours[hour];
+            const rufCount = ruf[idx]?.[hour] || 0;
+            html += `<td>${regular}${rufCount > 0 ? ` <span class="ruf-klein">(${rufCount})</span>` : ''}</td>`;
         });
-        resultHTML += `</tr>`;
+        html += `</tr>`;
     }
+    html += `</tbody></table>`;
+    resultContainer.innerHTML = html;
+    createDayCheckboxes();
+}
 
-    resultHTML += `</tbody></table>`;
-    resultContainer.innerHTML = resultHTML;
-    createDayCheckboxes(); // ✅ Checkboxen aktualisieren
+function createDayCheckboxes() {
+    const container = document.getElementById('dayFilter');
+    container.innerHTML = '';
+    days.forEach((day, i) => {
+        const label = document.createElement('label');
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.checked = true;
+        cb.dataset.dayIndex = i;
+        cb.addEventListener('change', () => toggleDayColumn(i, cb.checked));
+        label.appendChild(cb);
+        label.appendChild(document.createTextNode(' ' + day));
+        container.appendChild(label);
+    });
+}
+
+function toggleDayColumn(dayIndex, visible) {
+    document.querySelectorAll('#resultContainer table tr').forEach(row => {
+        const cells = row.querySelectorAll('td, th');
+        if (cells.length > dayIndex + 1) {
+            cells[dayIndex + 1].style.display = visible ? '' : 'none';
+        }
+    });
+}
+
+function processExcel(file) {
+    const reader = new FileReader();
+    reader.onload = function (e) {
+        const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+        const data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1 });
+
+        for (let i = 0; i < data.length; i++) {
+            const possible = data[i].slice(1, 8);
+            if (isDateRow(possible)) {
+                days = possible.map(cell => cell.trim());
+                break;
+            }
+        }
+        if (days.length !== 7) return alert("Datumszeile nicht erkannt.");
+
+        const resultContainer = document.getElementById('resultContainer');
+        hourlyData = [];
+        for (let i = 1; i <= 7; i++) {
+            hourlyData.push(analyzeDay(data, i, shift => relevantShifts.includes(shift)));
+        }
+        saveToLocalStorage('workScheduleData', hourlyData);
+        saveToLocalStorage('workScheduleDays', days);
+        saveToLocalStorage('rawExcelData', data);
+        displayResultsVertically(hourlyData, resultContainer);
+        document.getElementById('exportPdf').style.display = 'block';
+    };
+    reader.readAsArrayBuffer(file);
+}
+
+function processRufExcel(file) {
+    const reader = new FileReader();
+    reader.onload = function (e) {
+        const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+        const data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1 });
+
+        rufData = [];
+        for (let i = 1; i <= 7; i++) {
+            rufData.push(analyzeDay(data, i, shift => shift.includes('Rufbereitschaft')));
+        }
+        saveToLocalStorage('rufData', rufData);
+
+        if (hourlyData.length > 0) {
+            const resultContainer = document.getElementById('resultContainer');
+            displayResultsVertically(hourlyData, resultContainer);
+        }
+    };
+    reader.readAsArrayBuffer(file);
 }
 
 function loadSavedData() {
-    let savedDays = loadFromLocalStorage('workScheduleDays');
-    let savedHourlyData = loadFromLocalStorage('workScheduleData');
-    if (savedDays && savedHourlyData) {
-        days = savedDays;
-        hourlyData = savedHourlyData;
-        let resultContainer = document.getElementById('resultContainer');
+    days = loadFromLocalStorage('workScheduleDays') || [];
+    hourlyData = loadFromLocalStorage('workScheduleData') || [];
+    if (days.length && hourlyData.length) {
+        const resultContainer = document.getElementById('resultContainer');
         displayResultsVertically(hourlyData, resultContainer);
         document.getElementById('exportPdf').style.display = 'block';
     }
@@ -129,61 +163,27 @@ function loadSavedData() {
 function exportPDF() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
-    let y = 10;
-
     doc.setFontSize(16);
-    doc.text("MoD Schichtzeiten-Analyse", 10, y);
-    y += 10;
-
-    let headers = [["Uhrzeit"].concat(days)];
+    doc.text("MoD Schichtzeiten-Analyse", 10, 10);
     let tableData = [];
-    for (let hour = 0; hour < 24; hour++) {
-        let row = [`${hour}:00 - ${hour + 1}:00`];
-        hourlyData.forEach(dayHours => row.push(dayHours[hour]));
+    for (let h = 0; h < 24; h++) {
+        let row = [`${h}:00 - ${h + 1}:00`];
+        hourlyData.forEach((d, i) => {
+            const r = loadFromLocalStorage('rufData')?.[i]?.[h] || 0;
+            row.push(`${d[h]}${r > 0 ? `(${r})` : ''}`);
+        });
         tableData.push(row);
     }
-
     doc.autoTable({
-        head: headers,
+        head: [["Uhrzeit"].concat(days)],
         body: tableData,
-        startY: y,
+        startY: 20,
         theme: 'grid',
         styles: { fontSize: 10 }
     });
-
-    doc.save("schichtübersicht.pdf");
+    doc.save("schichtuebersicht.pdf");
 }
 
-function createDayCheckboxes() {
-    const container = document.getElementById('dayFilter');
-    container.innerHTML = '';
-    days.forEach((day, index) => {
-        const label = document.createElement('label');
-        label.style.marginRight = '10px';
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.checked = true;
-        checkbox.dataset.dayIndex = index;
-        checkbox.addEventListener('change', () => {
-            toggleDayColumn(index, checkbox.checked);
-        });
-        label.appendChild(checkbox);
-        label.appendChild(document.createTextNode(" " + day));
-        container.appendChild(label);
-    });
-}
-
-function toggleDayColumn(dayIndex, visible) {
-    const table = document.querySelector('#resultContainer table');
-    if (!table) return;
-
-    const rows = table.querySelectorAll('tr');
-    rows.forEach(row => {
-        const cells = row.querySelectorAll('td, th');
-        if (cells.length > dayIndex + 1) {
-            cells[dayIndex + 1].style.display = visible ? '' : 'none';
-        }
-    });
-}
-
+initDropZone("mainDropZone", "fileInput", processExcel);
+initDropZone("rufDropZone", "rufFileInput", processRufExcel);
 window.onload = loadSavedData;
